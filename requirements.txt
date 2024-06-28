@@ -1,1 +1,6 @@
 flask
+streamlit==1.26.0
+PyMuPDF
+openpyxl
+pandas
+xlsxwriter
