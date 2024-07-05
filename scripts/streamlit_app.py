@@ -1,6 +1,68 @@
 import streamlit as st 
 import pandas as pd
 
+
+class Terminal:
+    # Instantiates a new text block that can be edited later
+    def __init__(self, text : str):
+        self.container = st.empty()
+        self.text = text
+        self.last_len = len(text)
+        self.container = st.code(body=self.text, language="markdown", line_numbers=False)
+    
+    # Adds text to an existing text block
+    def update(self, text : str, newline : bool = True):
+        with self.container.container():
+            if newline:
+                self.container = st.code(self.text + "\n" + text, language="markdown", line_numbers=False)
+                self.text = self.text + "\n" + text
+            else:
+                self.container = st.code(self.text + text, language="markdown", line_numbers=False)
+                self.text = self.text + text
+            self.last_len = len(text)
+    
+    # Replaces the previous text update with this text
+    def replace_last(self, text : str, newline : bool = False):
+        with self.container.container():
+            if newline:
+                self.container = st.code(self.text[:-self.last_len] + "\n" + text, language="markdown", line_numbers=False)
+                self.text = self.text[:-self.last_len] + "\n" + text
+            else:
+                self.container = st.code(self.text[:-self.last_len] + text, language="markdown", line_numbers=False)
+                self.text = self.text[:-self.last_len] + text
+            self.last_len = len(text)
+    
+    # A loading bar [==>] with progress (from 0 to 1) and a total length of segments
+    # Must start at 0, which instantiates a new loading bar
+    def loading(self, progress: float, total_length: int = 20) -> str:
+        # Clamp progress between 0 and 1
+        progress = max(0, min(1, progress))
+        filled_length = round(total_length * progress)
+        
+        # Fill loading bar
+        if filled_length < total_length:
+            bar = "=" * (filled_length - 1)
+            bar += ">"
+        else:
+            bar = "=" * filled_length
+        bar = bar.ljust(total_length)
+        
+        text = f"[{bar}]"
+
+        if self.text[:-self.last_len] + text == self.text:
+            return
+
+        with self.container.container():
+            if progress == 0:
+                self.container = st.code(self.text + "\n" + text, language="markdown", line_numbers=False)
+                self.text = self.text + "\n" + text
+            else:
+                self.container = st.code(self.text[:-self.last_len] + text, language="markdown", line_numbers=False)
+                self.text = self.text[:-self.last_len] + text
+            self.last_len = len(text)
+
+
+
 st.balloons()
 st.markdown("# Data Evaluation App")
 
