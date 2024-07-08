@@ -1,0 +1,16 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.12
+    commands:
+      - pip install -r requirements.txt
+
+  build:
+    commands:
+      - python3 scripts/streamlit_app2.py
+
+# cache:
+#   paths:
+#     - /root/.pyenv/versions/3.9.17/lib/python3.9/site-packages
