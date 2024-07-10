@@ -18,6 +18,7 @@ KEYWORDS = [
 ]
 START_TIME = None
 END_TIME = None
+RUNNING = False
 ERRORS = 0
 
 
@@ -87,7 +88,7 @@ def save_excel(data, filename):
     return filename
 
 # Find keyword data from PDF text and save as 2d array
-def keys_in_pdf(doc, pdf_name, keywords, error, load_bar):
+def keys_in_pdf(file, doc, pdf_name, keywords, error, load_bar):
     try:
         load_bar.loading(0)
         keyword_data = {keyword: {"count": 0, "pages": []}
@@ -111,7 +112,7 @@ def keys_in_pdf(doc, pdf_name, keywords, error, load_bar):
 
         pdf.save(f"highlighted_{pdf_name}")
         pdf.close()
-        os.remove(pdf_name)
+        os.remove(file)
 
         csv_data = [[pdf_name, keyword, data["count"], data["pages"]]
                     for keyword, data in keyword_data.items() if data["count"] > 0]
@@ -158,8 +159,10 @@ keyword_input = st.text_input(
     placeholder="thing 1, item 2, other"
 )
 
-if st.button("Scan PDFs"):
+if st.button("Scan PDFs") and not RUNNING:
     START_TIME = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    RUNNING = True
+    ERRORS = 0
 
     if not uploaded_files:
         st.toast("Please upload files.")
@@ -178,7 +181,7 @@ if st.button("Scan PDFs"):
 
         proc_container = st.status("Processing PDFs")
         with proc_container:
-            proc_output = Terminal(f"STARTED PROCESS at {START_TIME}\n", "ini")
+            proc_output = Terminal(f"[ STARTED PROCESS at {START_TIME} ]\n", "ini")
 
             for uploaded_file in uploaded_files:
                 file_name = uploaded_file.name
@@ -186,19 +189,21 @@ if st.button("Scan PDFs"):
                 proc_output.update(f"Processing {file_name}")
 
                 # Process PDF file
-                csv_data = keys_in_pdf(file_data, file_name, cur_keywords, ERRORS, proc_output)
+                csv_data = keys_in_pdf(uploaded_file, file_data, file_name, cur_keywords, ERRORS, proc_output)
                 if type(csv_data) == int:
-                    ERRORS = csv_data
+                    ERRORS += csv_data
                     continue
                 all_csv_data.extend(csv_data)
                 all_pdfs.append(file_name)
 
             END_TIME = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            proc_output.update(f"ENDED PROCESS at {END_TIME}")
+            proc_output.update(f"[ ENDED PROCESS at {END_TIME} ]")
 
         if ERRORS:
             proc_container.update(state="error")
             st.toast(f"{ERRORS} sheet failed to process; see process log for more details." if ERRORS == 1 else f"{ERRORS} sheets failed to process; see process log for more details.")
+
+        RUNNING = False
 
         if all_csv_data:
             csv_file = save_excel(all_csv_data, "output.xlsx")
