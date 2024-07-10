@@ -112,7 +112,6 @@ def keys_in_pdf(file, doc, pdf_name, keywords, error, load_bar):
 
         pdf.save(f"highlighted_{pdf_name}")
         pdf.close()
-        os.remove(doc)
 
         csv_data = [[pdf_name, keyword, data["count"], data["pages"]]
                     for keyword, data in keyword_data.items() if data["count"] > 0]
@@ -195,6 +194,7 @@ if st.button("Scan PDFs") and not RUNNING:
                     continue
                 all_csv_data.extend(csv_data)
                 all_pdfs.append(file_name)
+                uploaded_file.close()
 
             END_TIME = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             proc_output.update(f"[ ENDED PROCESS at {END_TIME} ]")
