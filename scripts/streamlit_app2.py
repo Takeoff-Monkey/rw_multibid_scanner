@@ -111,8 +111,8 @@ def keys_in_pdf(doc, pdf_name, keywords, error, load_bar):
 
         pdf.save(f"highlighted_{pdf_name}")
         pdf.close()
-        os.remove(pdf)
-        
+        os.remove(pdf_name)
+
         csv_data = [[pdf_name, keyword, data["count"], data["pages"]]
                     for keyword, data in keyword_data.items() if data["count"] > 0]
         
