@@ -11,7 +11,7 @@ from io import BytesIO
 
 fitz.TOOLS.set_small_glyph_heights(True)
 ls = localStoragePy("tom_rw-multi-scope-bid-scanner", "json")
-st.set_page_config(page_title="RW Multi-Scope Bid Scanner", page_icon="https://avatars.githubusercontent.com/u/154240431?s=400&u=0c23bffefdf0d19a524eb945ac3e3affaa635cdf&v=4", layout="centered", initial_sidebar_state="auto", menu_items=None)
+st.set_page_config(page_title="Multi-Scope Bid Scanner", page_icon="https://avatars.githubusercontent.com/u/154240431?s=400&u=0c23bffefdf0d19a524eb945ac3e3affaa635cdf&v=4", layout="centered", initial_sidebar_state="auto", menu_items=None)
 
 KEYWORDS = [
     "chain", "link", "ornamental", "fenc", "gate", "operator", "wood", "steel", "bollard", "barrier", "wedge", "crash", "turnstile", "temporary", "rail"
@@ -21,6 +21,24 @@ END_TIME = None
 RUNNING = False
 ERRORS = 0
 
+
+# Get the max number of pages that exist from any of the PDFs, and save to session_state
+def get_max_page_count():
+    st.session_state.max_pages = 1
+    try:
+        for file in st.session_state.uploaded_files:
+            pdf_bytes = file.getvalue()
+            pdf = fitz.open(stream=pdf_bytes, filetype="pdf")
+            if len(pdf) > st.session_state.max_pages:
+                st.session_state.max_pages = len(pdf)
+            pdf.close()
+    except Exception as err:
+        pass
+
+def set_session_state_defaults(vars : dict):
+    for var in vars:
+        if var not in st.session_state:
+            st.session_state[var] = vars[var]
 
 class Terminal:
     # Instantiates a new text block that can be edited later
@@ -120,7 +138,7 @@ def keys_in_pdf(file, doc, pdf_name, keywords, error, load_bar):
         load_bar.update("Successfully processed file.\n")
         return csv_data
     except Exception as err:
-        load_bar.update(f"Failed to process {pdf_name}:\n{err}\n")
+        load_bar.update(f"Failed to process file:\n{err}\n")
         return error + 1
 
 def create_zip(files : list, prefix : str = ""):
@@ -132,31 +150,50 @@ def create_zip(files : list, prefix : str = ""):
     return zip_buffer.getvalue()
 
 
-st.title("RW Multi-Scope Bid Scanner")
+st.title("Multi-Scope Bid Scanner")
+
+set_session_state_defaults({
+    "max_pages": 1
+})
 
 uploaded_files = st.file_uploader(
-    label="Select files to scan:",
+    label=" ",
     accept_multiple_files=True,
     type=["pdf"],
-    # label_visibility="collapsed"
+    help="Select files to scan.",
+    on_change=get_max_page_count,
+    key="uploaded_files"
 )
 
-use_standard_keys = st.toggle("Use standard keywords")
+use_standard_keys = st.toggle(
+    label="Use standard keywords",
+    value=True,
+    help="Standard set of keywords to highlight."
+)
 
 if use_standard_keys:
     predefined_keys = st.multiselect(
         label="Select keywords:",
         options=KEYWORDS,
         default=KEYWORDS,
-        label_visibility="collapsed",
-        on_change=ls.setItem("standard_keys", ["thing 1", "thing 2"])
+        label_visibility="collapsed"
     )
-    print(ls.getItem("standard_keys"))
 
 keyword_input = st.text_input(
-    label="Enter additional keywords separated by commas:",
-    placeholder="thing 1, item 2, other"
+    label="Custom keywords",
+    placeholder="thing 1, item 2, other",
+    help="Enter any additional keywords separated by commas."
 )
+
+with st.expander("Advanced Settings (optional)"):
+    SKIP_PAGES = st.multiselect(
+        label="Ignore pages",
+        placeholder="Select page numbers",
+        options=list(range(1, st.session_state.max_pages + 1)),
+        max_selections=st.session_state.max_pages - 1,
+        disabled=True if st.session_state.max_pages == 1 else False,
+        help="Exclude the following pages from being processed on all PDFs. This is useful if there are particular pages containing your keywords which you want to ignore."
+    )
 
 if st.button("Scan PDFs") and not RUNNING:
     START_TIME = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -228,9 +265,9 @@ if st.button("Scan PDFs") and not RUNNING:
                 for pdf in all_pdfs:
                     with open(f"highlighted_{pdf}", "rb") as data:
                         st.download_button(
-                            label=f"Download {pdf}",
+                            label=f"Download {pdf}.pdf",
                             data=data,
-                            file_name=f"highlighted_{pdf}",
+                            file_name=f"{pdf}",
                             mime="application/pdf"
                         )
                     os.remove(f"highlighted_{pdf}")
